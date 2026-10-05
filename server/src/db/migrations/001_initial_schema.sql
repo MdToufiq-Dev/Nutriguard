@@ -1,0 +1,116 @@
+-- Initial Database Migration
+-- NUTRIGUARD React
+
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_constraints (
+  user_id TEXT PRIMARY KEY REFERENCES users(id),
+  goal TEXT NOT NULL,
+  diet_type TEXT NOT NULL,
+  daily_budget DECIMAL NOT NULL,
+  calorie_target INTEGER NOT NULL,
+  meal_timings JSONB NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS compliance (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  date DATE NOT NULL,
+  status TEXT NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS plans (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  goal TEXT NOT NULL,
+  diet_type TEXT NOT NULL,
+  duration INTEGER NOT NULL,
+  daily_budget DECIMAL NOT NULL,
+  calorie_target INTEGER NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS meals (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  meal_type TEXT NOT NULL,
+  kcal INTEGER NOT NULL,
+  protein INTEGER NOT NULL,
+  carbs INTEGER NOT NULL,
+  fat INTEGER NOT NULL,
+  cost DECIMAL NOT NULL,
+  prep_minutes INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS plan_meals (
+  id TEXT PRIMARY KEY,
+  plan_id TEXT NOT NULL REFERENCES plans(id),
+  meal_id TEXT NOT NULL REFERENCES meals(id),
+  date DATE NOT NULL,
+  meal_type TEXT NOT NULL,
+  scheduled_time TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS scan_history (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  barcode TEXT NOT NULL,
+  product_name TEXT NOT NULL,
+  verdict TEXT NOT NULL,
+  scanned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS products (
+  barcode TEXT PRIMARY KEY,
+  product_name TEXT NOT NULL,
+  brand TEXT,
+  image_url TEXT,
+  ingredients TEXT,
+  nutrition JSONB NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS restaurants (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  lat DOUBLE PRECISION NOT NULL,
+  lng DOUBLE PRECISION NOT NULL,
+  address TEXT NOT NULL,
+  price_range INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS meal_tags (
+  id SERIAL PRIMARY KEY,
+  meal_id TEXT NOT NULL REFERENCES meals(id),
+  tag TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS product_allergens (
+  id SERIAL PRIMARY KEY,
+  barcode TEXT NOT NULL REFERENCES products(barcode),
+  allergen TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS meal_allergens (
+  id SERIAL PRIMARY KEY,
+  meal_id TEXT NOT NULL REFERENCES meals(id),
+  allergen TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS restaurant_tags (
+  id SERIAL PRIMARY KEY,
+  restaurant_id TEXT NOT NULL REFERENCES restaurants(id),
+  tag TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS diet_tags (
+  id SERIAL PRIMARY KEY,
+  diet_type TEXT NOT NULL UNIQUE
+);
