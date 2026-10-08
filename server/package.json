@@ -17,7 +17,7 @@
     "seed": "node src/db/seeds/index.js",
     "lint": "eslint src/",
     "format": "prettier --write src/",
-    "test": "vitest run",
+    "test": "vitest run --fileParallelism=false",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "eval:llm": "node evals/runEvals.js"
@@ -26,6 +26,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.5",
     "dotenv": "^18.0.5",
     "express": "^5.0.0",
@@ -33,6 +34,8 @@
     "helmet": "^7.1.0",
     "node-cache": "^5.1.2",
     "node-pg-migrate": "^7.0.0",
+    "ollama": "^0.6.4",
+    "openai": "^7.30.0",
     "opening_hours": "^3.6.2",
     "pg": "^8.23.1",
     "pino": "^8.17.2",

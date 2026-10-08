@@ -8,6 +8,11 @@ describe('Plans & Constraints API', () => {
   const testUserId = config.devUserId;
 
   beforeEach(async () => {
+    await pool.query('DELETE FROM plan_meals');
+    await pool.query('DELETE FROM compliance');
+    await pool.query('DELETE FROM plans');
+    await pool.query('DELETE FROM user_constraints');
+    await pool.query('DELETE FROM users WHERE id = $1 OR email = $2', [testUserId, 'dev@example.com']);
     await pool.query(
       'INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email',
       [testUserId, 'dev@example.com']
@@ -62,6 +67,7 @@ describe('Plans & Constraints API', () => {
 
   it('GET /api/users/:userId/constraints and PUT /api/users/:userId/constraints', async () => {
     const customUserId = 'custom-user-123';
+    await pool.query('DELETE FROM users WHERE id = $1 OR email = $2', [customUserId, 'custom@example.com']);
     await pool.query(
       'INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email',
       [customUserId, 'custom@example.com']

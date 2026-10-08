@@ -9,11 +9,15 @@ describe('Calendar & Compliance API', () => {
   const userId = config.devUserId;
 
   beforeEach(async () => {
+    await pool.query('DELETE FROM compliance WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM plan_meals');
+    await pool.query('DELETE FROM plans WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM user_constraints WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM users WHERE id = $1 OR email = $2', [userId, 'dev@example.com']);
     await pool.query(
       'INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email',
       [userId, 'dev@example.com']
     );
-    await pool.query('DELETE FROM compliance WHERE user_id = $1', [userId]);
   });
 
   it('should set and get compliance for a specific date', async () => {
@@ -63,7 +67,9 @@ describe('Calendar & Compliance API', () => {
   });
 
   it('should calculate streak accurately for consecutive days', () => {
-    const today = new Date();
+    const today = new Date('2026-10-08T00:00:00Z');
+    vi.setSystemTime(today);
+
     const formatDate = (d) => {
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -88,5 +94,7 @@ describe('Calendar & Compliance API', () => {
 
     const streak = ComplianceModel.calculateStreak(logs);
     expect(streak).toBe(3);
+
+    vi.useRealTimers();
   });
 });

@@ -32,17 +32,30 @@ export default function Calendar() {
 
     // Load compliance log
     useEffect(() => {
+        let isMounted = true;
         const loadData = async () => {
-            const log = await calendarService.getComplianceLog(user.id);
-            setComplianceLog(log);
-            setStreak(calculateStreak(log));
+            try {
+                const data = await calendarService.getComplianceLog(user.id);
+                if (!isMounted) return;
+
+                const log = data && data.logs ? data.logs : (Array.isArray(data) ? data : []);
+                setComplianceLog(log);
+                const computedStreak = typeof data?.streak === 'number' ? data.streak : calculateStreak(log);
+                setStreak(computedStreak);
+            } catch (err) {
+                console.error('Failed to load compliance log:', err);
+            }
         };
         loadData();
+        return () => {
+            isMounted = false;
+        };
     }, [user.id]);
 
     const handleDayClick = (date) => {
         if (isFuture(date)) {
-            return; // Can't log future days
+            showToast("Cannot log compliance for future dates", "info");
+            return;
         }
         setSelectedDate(date);
     };
@@ -51,23 +64,30 @@ export default function Calendar() {
         const date = selectedDate || getTodayString();
 
         await triggerLoader(async () => {
-            await calendarService.setCompliance(user.id, date, status);
-            const log = await calendarService.getComplianceLog(user.id);
-            setComplianceLog(log);
-            setStreak(calculateStreak(log));
+            try {
+                await calendarService.setCompliance(user.id, date, status);
+                const data = await calendarService.getComplianceLog(user.id);
+                const log = data && data.logs ? data.logs : (Array.isArray(data) ? data : []);
+                setComplianceLog(log);
+                const newStreak = typeof data?.streak === 'number' ? data.streak : calculateStreak(log);
+                setStreak(newStreak);
 
-            const statusLabels = {
-                followed: 'Followed fully',
-                partial: 'Partially followed',
-                missed: 'Missed'
-            };
+                const statusLabels = {
+                    followed: 'Followed fully',
+                    partial: 'Partially followed',
+                    missed: 'Missed'
+                };
 
-            showToast(
-                `Logged as "${statusLabels[status]}" - ${streak > 0 ? `${streak} day streak!` : 'Keep going!'}`,
-                'success'
-            );
+                showToast(
+                    `Logged as "${statusLabels[status]}" • ${newStreak > 0 ? `${newStreak} day streak!` : 'Keep going!'}`,
+                    'success'
+                );
 
-            setSelectedDate(null);
+                setSelectedDate(null);
+            } catch (err) {
+                console.error('Failed to update compliance:', err);
+                showToast('Failed to save compliance log', 'error');
+            }
         }, 300);
     };
 
@@ -104,7 +124,7 @@ export default function Calendar() {
         // Add all days of the month
         dates.forEach(date => {
             const compliance = getComplianceForDate(date);
-            const dayNumber = parseInt(date.split('-')[2]);
+            const dayNumber = parseInt(date.split('-')[2], 10);
             const isTodayDate = isToday(date);
             const isFutureDate = isFuture(date);
             const isSelected = selectedDate === date;

@@ -1,5 +1,6 @@
 import express from 'express';
 import { searchRestaurants, getRestaurantDetails, placeDeliveryOrder, getActiveDeliveryOrders, updateOrderStatus, saveFavoriteRestaurant, removeFavoriteRestaurant, getFavoriteRestaurants } from '../services/deliveryService.js';
+import { geocodeAddress } from '../services/geocodingService.js';
 import { OrderModel } from '../db/models/order.js';
 import { FavoriteModel } from '../db/models/favorite.js';
 
@@ -9,6 +10,14 @@ const router = express.Router();
 router.get('/nearby', async (req, res) => {
   try {
     const filters = req.query;
+    // If address is provided, geocode it first
+    if (filters.address) {
+      const location = await geocodeAddress(filters.address);
+      if (location) {
+        filters.lat = location.lat;
+        filters.lng = location.lng;
+      }
+    }
     const restaurants = await searchRestaurants(filters);
     res.json(restaurants);
   } catch (error) {

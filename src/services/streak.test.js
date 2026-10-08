@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
     calculateStreak,
     getMonthDates,
@@ -7,7 +7,26 @@ import {
     isPast,
     isFuture,
     getTodayString,
+    formatDate,
 } from '../utils/streak';
+
+// Use dynamic current date for tests
+const FIXED_DATE = new Date('2026-10-08T00:00:00Z');
+
+function getRelativeDate(daysOffset) {
+    const date = new Date(FIXED_DATE);
+    date.setDate(date.getDate() + daysOffset);
+    return formatDate(date);
+}
+
+beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_DATE);
+});
+
+afterEach(() => {
+    vi.useRealTimers();
+});
 
 describe('calculateStreak', () => {
     it('returns 0 for empty log', () => {
@@ -16,72 +35,77 @@ describe('calculateStreak', () => {
 
     it('returns 0 when no followed entries', () => {
         const log = [
-            { date: '2026-10-02', status: 'partial' },
-            { date: '2026-10-01', status: 'missed' },
+            { date: getRelativeDate(-1), status: 'partial' },
+            { date: getRelativeDate(-2), status: 'missed' },
         ];
         expect(calculateStreak(log)).toBe(0);
     });
 
     it('calculates streak ending today', () => {
         const log = [
-            { date: '2026-10-03', status: 'followed' },
-            { date: '2026-10-02', status: 'followed' },
-            { date: '2026-10-01', status: 'followed' },
+            { date: getRelativeDate(0), status: 'followed' },
+            { date: getRelativeDate(-1), status: 'followed' },
+            { date: getRelativeDate(-2), status: 'followed' },
         ];
         expect(calculateStreak(log)).toBe(3);
     });
 
     it('calculates streak ending yesterday (grace period)', () => {
         const log = [
-            { date: '2026-10-02', status: 'followed' },
-            { date: '2026-10-01', status: 'followed' },
-            { date: '2026-09-30', status: 'followed' },
+            { date: getRelativeDate(-1), status: 'followed' },
+            { date: getRelativeDate(-2), status: 'followed' },
+            { date: getRelativeDate(-3), status: 'followed' },
         ];
         expect(calculateStreak(log)).toBe(3);
     });
 
     it('returns 0 when streak ended 2+ days ago', () => {
         const log = [
-            { date: '2026-10-01', status: 'followed' },
-            { date: '2026-09-30', status: 'followed' },
+            { date: getRelativeDate(-2), status: 'followed' },
+            { date: getRelativeDate(-3), status: 'followed' },
         ];
         expect(calculateStreak(log)).toBe(0);
     });
 
     it('stops counting at first non-followed day', () => {
         const log = [
-            { date: '2026-10-03', status: 'followed' },
-            { date: '2026-10-02', status: 'followed' },
-            { date: '2026-10-01', status: 'partial' },
-            { date: '2026-09-30', status: 'followed' },
+            { date: getRelativeDate(0), status: 'followed' },
+            { date: getRelativeDate(-1), status: 'followed' },
+            { date: getRelativeDate(-2), status: 'partial' },
+            { date: getRelativeDate(-3), status: 'followed' },
         ];
         expect(calculateStreak(log)).toBe(2);
     });
 
     it('handles unsorted log', () => {
         const log = [
-            { date: '2026-10-01', status: 'followed' },
-            { date: '2026-10-03', status: 'followed' },
-            { date: '2026-10-02', status: 'followed' },
+            { date: getRelativeDate(-2), status: 'followed' },
+            { date: getRelativeDate(0), status: 'followed' },
+            { date: getRelativeDate(-1), status: 'followed' },
         ];
         expect(calculateStreak(log)).toBe(3);
     });
 
     it('handles gaps in dates correctly', () => {
         const log = [
-            { date: '2026-10-03', status: 'followed' },
-            { date: '2026-10-01', status: 'followed' },
+            { date: getRelativeDate(0), status: 'followed' },
+            { date: getRelativeDate(-2), status: 'followed' },
         ];
         expect(calculateStreak(log)).toBe(1); // Gap breaks streak
     });
 });
 
 describe('getMonthDates', () => {
-    it('returns correct dates for October 2026', () => {
-        const dates = getMonthDates(2026, 9); // Month is 0-indexed
-        expect(dates.length).toBe(31);
-        expect(dates[0]).toBe('2026-10-01');
-        expect(dates[30]).toBe('2026-10-31');
+    it('returns correct dates for the current month', () => {
+        const year = FIXED_DATE.getFullYear();
+        const month = FIXED_DATE.getMonth();
+        const dates = getMonthDates(year, month);
+        const expectedDates = [];
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        for(let i=1; i<=lastDay; i++){
+            expectedDates.push(formatDate(new Date(year, month, i)));
+        }
+        expect(dates).toEqual(expectedDates);
     });
 
     it('returns correct dates for February 2024 (leap year)', () => {
@@ -98,61 +122,61 @@ describe('getMonthDates', () => {
 });
 
 describe('getFirstDayOfMonth', () => {
-    it('returns correct day for October 2026 (Wednesday = 3)', () => {
-        expect(getFirstDayOfMonth(2026, 9)).toBe(4); // Thursday = 4
+    it('returns correct day for current month', () => {
+        const year = FIXED_DATE.getFullYear();
+        const month = FIXED_DATE.getMonth();
+        const firstDay = new Date(year, month, 1).getDay();
+        expect(getFirstDayOfMonth(year, month)).toBe(firstDay);
     });
 
-    it('returns correct day for January 2026 (Wednesday = 3)', () => {
-        expect(getFirstDayOfMonth(2026, 0)).toBe(4); // Thursday = 4
+    it('returns correct day for January 2026 (Thursday = 4)', () => {
+        expect(getFirstDayOfMonth(2026, 0)).toBe(4);
     });
 });
 
 describe('isToday', () => {
     it('returns true for today', () => {
-        const today = getTodayString();
-        expect(isToday(today)).toBe(true);
+        expect(isToday(getRelativeDate(0))).toBe(true);
     });
 
     it('returns false for yesterday', () => {
-        expect(isToday('2026-10-02')).toBe(false);
+        expect(isToday(getRelativeDate(-1))).toBe(false);
     });
 
     it('returns false for tomorrow', () => {
-        expect(isToday('2026-10-04')).toBe(false);
+        expect(isToday(getRelativeDate(1))).toBe(false);
     });
 });
 
 describe('isPast', () => {
     it('returns true for dates before today', () => {
-        expect(isPast('2026-10-02')).toBe(true);
-        expect(isPast('2026-09-01')).toBe(true);
+        expect(isPast(getRelativeDate(-1))).toBe(true);
+        expect(isPast(getRelativeDate(-30))).toBe(true);
     });
 
     it('returns false for today', () => {
-        const today = getTodayString();
-        expect(isPast(today)).toBe(false);
+        expect(isPast(getTodayString())).toBe(false);
     });
 
     it('returns false for future dates', () => {
-        expect(isPast('2026-10-04')).toBe(false);
-        expect(isPast('2026-11-01')).toBe(false);
+        expect(isPast(getRelativeDate(1))).toBe(false);
+        expect(isPast(getRelativeDate(30))).toBe(false);
     });
 });
 
 describe('isFuture', () => {
     it('returns true for dates after today', () => {
-        expect(isFuture('2026-10-04')).toBe(true);
-        expect(isFuture('2026-11-01')).toBe(true);
+        expect(isFuture(getRelativeDate(1))).toBe(true);
+        expect(isFuture(getRelativeDate(30))).toBe(true);
     });
 
     it('returns false for today', () => {
-        const today = getTodayString();
-        expect(isFuture(today)).toBe(false);
+        expect(isFuture(getTodayString())).toBe(false);
     });
 
     it('returns false for past dates', () => {
-        expect(isFuture('2026-10-02')).toBe(false);
-        expect(isFuture('2026-09-01')).toBe(false);
+        expect(isFuture(getRelativeDate(-1))).toBe(false);
+        expect(isFuture(getRelativeDate(-30))).toBe(false);
     });
 });
 
@@ -160,6 +184,6 @@ describe('getTodayString', () => {
     it('returns date in YYYY-MM-DD format', () => {
         const today = getTodayString();
         expect(today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-        expect(today).toBe('2026-10-03'); // Based on context time
+        expect(today).toBe(formatDate(FIXED_DATE));
     });
 });

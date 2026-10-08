@@ -9,11 +9,15 @@ describe('Scan & Safety Evaluator API', () => {
   const userId = config.devUserId;
 
   beforeEach(async () => {
+    await pool.query('DELETE FROM plan_meals');
+    await pool.query('DELETE FROM plans');
+    await pool.query('DELETE FROM user_constraints');
+    await pool.query('DELETE FROM scan_history WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM users WHERE id = $1 OR email = $2', [userId, 'dev@example.com']);
     await pool.query(
       'INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email',
       [userId, 'dev@example.com']
     );
-    await pool.query('DELETE FROM scan_history WHERE user_id = $1', [userId]);
   });
 
   it('GET /api/scan/lookup/:barcode returns safe for non-conflicting product', async () => {

@@ -4,19 +4,58 @@
  */
 
 /**
+ * Helper to parse YYYY-MM-DD to local Date at midnight
+ */
+function parseLocalDate(dateStr) {
+    if (!dateStr) return null;
+    if (dateStr instanceof Date) {
+        const d = new Date(dateStr);
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        return new Date(year, month, day, 0, 0, 0, 0);
+    }
+    const d = new Date(dateStr);
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+/**
+ * Format date as YYYY-MM-DD
+ */
+export function formatDate(date) {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
  * Calculate current streak
- * @param {Array} complianceLog - Array of { date, status } sorted by date desc
+ * @param {Array} complianceLog - Array of { date, status }
  * @returns {number} - Current streak count
  */
 export function calculateStreak(complianceLog) {
-    if (!complianceLog || complianceLog.length === 0) {
+    if (!complianceLog || !Array.isArray(complianceLog) || complianceLog.length === 0) {
         return 0;
     }
 
-    // Sort by date descending
-    const sorted = [...complianceLog].sort((a, b) =>
-        new Date(b.date) - new Date(a.date)
-    );
+    // Build map of normalized date -> status
+    const logMap = new Map();
+    for (const item of complianceLog) {
+        if (item && item.date) {
+            const dateStr = typeof item.date === 'string' && item.date.length === 10
+                ? item.date
+                : formatDate(parseLocalDate(item.date));
+            logMap.set(dateStr, item.status);
+        }
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -26,44 +65,41 @@ export function calculateStreak(complianceLog) {
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = formatDate(yesterday);
 
-    // Find most recent 'followed' entry
-    const mostRecent = sorted.find(log => log.status === 'followed');
-    if (!mostRecent) {
+    // If today is explicitly marked as non-followed (e.g. 'partial' or 'missed'), streak is broken (0)
+    const todayStatus = logMap.get(todayStr);
+    if (todayStatus && todayStatus !== 'followed') {
         return 0;
     }
 
-    // Streak must end today or yesterday
-    if (mostRecent.date !== todayStr && mostRecent.date !== yesterdayStr) {
-        return 0;
+    // Determine start date of streak (today if followed, or yesterday if followed and today not logged)
+    let startCheckDate = null;
+    if (todayStatus === 'followed') {
+        startCheckDate = new Date(today);
+    } else {
+        const yesterdayStatus = logMap.get(yesterdayStr);
+        if (yesterdayStatus === 'followed') {
+            startCheckDate = new Date(yesterday);
+        } else {
+            return 0;
+        }
     }
 
-    // Count consecutive 'followed' days
     let streak = 0;
-    let currentDate = new Date(mostRecent.date);
+    let curr = new Date(startCheckDate);
 
-    for (const log of sorted) {
-        const logDate = formatDate(currentDate);
+    while (true) {
+        const currStr = formatDate(curr);
+        const status = logMap.get(currStr);
 
-        if (log.date === logDate && log.status === 'followed') {
+        if (status === 'followed') {
             streak++;
-            currentDate.setDate(currentDate.getDate() - 1);
-        } else if (log.date === logDate) {
-            // Found a non-followed day, streak ends
+            curr.setDate(curr.getDate() - 1);
+        } else {
             break;
         }
     }
 
     return streak;
-}
-
-/**
- * Format date as YYYY-MM-DD
- */
-function formatDate(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
 }
 
 /**
@@ -103,8 +139,8 @@ export function isToday(dateStr) {
 export function isPast(dateStr) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const date = new Date(dateStr);
-    return date < today;
+    const target = parseLocalDate(dateStr);
+    return target < today;
 }
 
 /**
@@ -113,9 +149,8 @@ export function isPast(dateStr) {
 export function isFuture(dateStr) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const date = new Date(dateStr);
-    date.setHours(0, 0, 0, 0);
-    return date > today;
+    const target = parseLocalDate(dateStr);
+    return target > today;
 }
 
 /**

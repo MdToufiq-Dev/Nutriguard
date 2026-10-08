@@ -7,6 +7,11 @@ import pool from '../db/pool.js';
 
 describe('Plans and Constraints', () => {
   beforeEach(async () => {
+    await pool.query('DELETE FROM plan_meals');
+    await pool.query('DELETE FROM plans');
+    await pool.query('DELETE FROM meals');
+    await pool.query('DELETE FROM user_constraints');
+    await pool.query('DELETE FROM users WHERE id = $1 OR email = $2', ['temp-user-id', 'test@example.com']);
     await pool.query(
       'INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email',
       ['temp-user-id', 'test@example.com']

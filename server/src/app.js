@@ -15,6 +15,8 @@ import plansRoutes from './routes/plans.js';
 import scanRoutes from './routes/scan.js';
 import restaurantsRoutes from './routes/restaurants.js';
 import usersRoutes from './routes/users.js';
+import mapsRoutes from './routes/maps.js';
+import chatRoutes from './routes/chat.js';
 
 const app = express();
 
@@ -43,6 +45,8 @@ app.use('/api/plans', plansRoutes);
 app.use('/api/scan', scanRoutes);
 app.use('/api/restaurants', restaurantsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/maps', mapsRoutes);
+app.use('/api/chat', chatRoutes);
 
 // 404
 app.use((req, res) => {

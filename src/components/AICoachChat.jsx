@@ -1,63 +1,186 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import * as api from '../services/api';
 
-export default function AICoachChat({ meals, totalCalories }) {
+export default function AICoachChat({ meals = [], totalCalories = 0 }) {
   const [messages, setMessages] = useState([
-    { sender: 'ai', text: `Hello! I'm your NutriGuard AI Nutritionist. You have consumed ${totalCalories} kcal today. How can I help optimize your diet?` }
+    {
+      role: 'assistant',
+      text: `Hello! I'm your NutriGuard AI Nutritionist. ${
+        totalCalories > 0 ? `You have logged ${totalCalories} kcal today.` : 'How can I assist you with your diet and nutrition goals today?'
+      }`
+    }
   ]);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef(null);
 
-  const handleSend = (e) => {
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
+  const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
-    const userMessage = input;
-    setMessages(prev => [...prev, { sender: 'user', text: userMessage }]);
+    const userText = input.trim();
+    const updatedMessages = [...messages, { role: 'user', text: userText }];
+    setMessages(updatedMessages);
     setInput('');
+    setLoading(true);
 
+    try {
+      // Try backend LLM chat endpoint
+      const formattedForApi = updatedMessages.map(m => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.text
+      }));
+
+      const res = await api.post('/chat', { messages: formattedForApi });
+      const reply = res?.content || res?.message || res?.response || res?.text;
+
+      if (reply) {
+        setMessages(prev => [...prev, { role: 'assistant', text: reply }]);
+        setLoading(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend chat fallback to local assistant:', err);
+    }
+
+    // Local fallback responses
     setTimeout(() => {
-      let aiReply = "That sounds like a balanced choice! Make sure you drink enough water to stay hydrated.";
-      const lower = userMessage.toLowerCase();
+      const lower = userText.toLowerCase();
+      let aiReply = "That's a great question! For sustainable nutrition, focus on whole foods, lean proteins, high fiber, and staying hydrated throughout the day.";
+
       if (lower.includes('protein') || lower.includes('muscle')) {
-        aiReply = "To support muscle recovery, try adding Greek yogurt, lean chicken breast, or plant-based tofu to your upcoming meals.";
-      } else if (lower.includes('weight loss') || lower.includes('deficit')) {
-        aiReply = `You're currently at ${totalCalories} kcal. Keeping high-fiber vegetables and lean protein sources will help you feel full while staying in a deficit.`;
+        aiReply = "To optimize protein intake, aim for 1.6-2.2g per kg of bodyweight. Great sources include chicken breast, Greek yogurt, eggs, salmon, tofu, and lentils.";
+      } else if (lower.includes('weight loss') || lower.includes('deficit') || lower.includes('cut')) {
+        aiReply = `For healthy fat loss, aim for a moderate 300-500 kcal daily deficit. Prioritize protein to preserve lean muscle and high-volume vegetables to stay full.`;
+      } else if (lower.includes('keto') || lower.includes('carb')) {
+        aiReply = "On a keto diet, keep net carbs under 20-50g daily while increasing healthy fats (avocado, olive oil, nuts) and maintaining moderate protein.";
+      } else if (lower.includes('snack') || lower.includes('hungry')) {
+        aiReply = "Healthy snack ideas: apple with peanut butter, a handful of almonds, boiled eggs, cottage cheese with berries, or roasted edamame.";
       }
 
-      setMessages(prev => [...prev, { sender: 'ai', text: aiReply }]);
-    }, 600);
+      setMessages(prev => [...prev, { role: 'assistant', text: aiReply }]);
+      setLoading(false);
+    }, 500);
   };
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 backdrop-blur-md shadow-xl flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          NutriGuard AI Coach
-        </h2>
-        <span className="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full">Online</span>
+    <div
+      style={{
+        background: 'var(--card-bg, #1e293b)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '16px',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '450px',
+        maxWidth: '720px',
+        margin: '0 auto'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--accent, #10b981)' }}></span>
+          <h3 style={{ fontSize: '16px', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
+            NutriGuard AI Coach
+          </h3>
+        </div>
+        <span
+          style={{
+            fontSize: '11px',
+            backgroundColor: 'rgba(16, 185, 129, 0.15)',
+            color: 'var(--accent, #10b981)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            padding: '2px 8px',
+            borderRadius: '12px'
+          }}
+        >
+          Active
+        </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-3 max-h-64 pr-2 mb-4 bg-slate-950/40 p-4 rounded-xl border border-slate-800/80">
-        {messages.map((msg, index) => (
-          <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.sender === 'user' ? 'bg-emerald-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700/60'}`}>
-              {msg.text}
+      <div
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          maxHeight: '340px',
+          padding: '12px',
+          borderRadius: '12px',
+          backgroundColor: 'rgba(0, 0, 0, 0.2)',
+          border: '1px solid rgba(255, 255, 255, 0.05)',
+          marginBottom: '16px'
+        }}
+      >
+        {messages.map((msg, index) => {
+          const isUser = msg.role === 'user';
+          return (
+            <div key={index} style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
+              <div
+                style={{
+                  maxWidth: '80%',
+                  padding: '10px 14px',
+                  borderRadius: '14px',
+                  fontSize: '14px',
+                  lineHeight: '1.5',
+                  background: isUser ? 'var(--accent, #10b981)' : 'rgba(255, 255, 255, 0.08)',
+                  color: isUser ? '#ffffff' : 'var(--text-primary)',
+                  borderTopRightRadius: isUser ? '2px' : '14px',
+                  borderTopLeftRadius: isUser ? '14px' : '2px',
+                  border: isUser ? 'none' : '1px solid rgba(255, 255, 255, 0.06)'
+                }}
+              >
+                {msg.text}
+              </div>
+            </div>
+          );
+        })}
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <div
+              style={{
+                padding: '10px 14px',
+                borderRadius: '14px',
+                fontSize: '13px',
+                color: 'var(--text-muted)',
+                background: 'rgba(255, 255, 255, 0.05)'
+              }}
+            >
+              NutriGuard is thinking...
             </div>
           </div>
-        ))}
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSend} className="flex gap-2">
-        <input 
+      <form onSubmit={handleSend} style={{ display: 'flex', gap: '8px' }}>
+        <input
           type="text"
-          placeholder="Ask for diet advice, macro tips..."
+          placeholder="Ask for nutrition tips, meal recommendations, macros..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+          disabled={loading}
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(255, 255, 255, 0.06)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            borderRadius: '10px',
+            padding: '10px 14px',
+            fontSize: '14px',
+            color: 'var(--text-primary)',
+            outline: 'none'
+          }}
         />
-        <button 
+        <button
           type="submit"
-          className="bg-teal-600 hover:bg-teal-500 text-white px-5 py-2 rounded-xl text-sm font-semibold transition"
+          className="btn btn-primary"
+          disabled={loading || !input.trim()}
+          style={{ padding: '0 20px', whiteSpace: 'nowrap' }}
         >
           Send
         </button>

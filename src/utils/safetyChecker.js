@@ -10,6 +10,11 @@
  * @returns {Object} Safety status with warnings
  */
 export function checkProductSafety(product, userConstraints = {}) {
+    if (!product) return { safe: false, blocked: false, warning: true, severity: 'warning', issues: [], recommendation: 'No product information.' };
+
+    const allergensList = product.allergens || [];
+    const tagsList = product.tags || [];
+
     const {
         allergens = [],
         dislikedFoods = [],
@@ -21,7 +26,7 @@ export function checkProductSafety(product, userConstraints = {}) {
     let severity = 'safe'; // 'safe' | 'warning' | 'blocked'
 
     // Check allergens (hard block)
-    const conflictingAllergens = product.allergens.filter(a => allergens.includes(a));
+    const conflictingAllergens = allergensList.filter(a => allergens.includes(a));
     if (conflictingAllergens.length > 0) {
         issues.push({
             type: 'allergen',
@@ -33,9 +38,9 @@ export function checkProductSafety(product, userConstraints = {}) {
     }
 
     // Check diet tags (warning)
-    if (dietType !== 'any' && !product.tags.includes(dietType)) {
+    if (dietType !== 'any' && !tagsList.includes(dietType)) {
         // For specific diets, check if product conflicts
-        if (dietType === 'vegan' && product.allergens.includes('dairy')) {
+        if (dietType === 'vegan' && allergensList.includes('dairy')) {
             issues.push({
                 type: 'diet',
                 severity: 'warning',
@@ -43,20 +48,22 @@ export function checkProductSafety(product, userConstraints = {}) {
             });
             if (severity !== 'blocked') severity = 'warning';
         }
-        if (dietType === 'keto' && product.carbs > 5) {
+        if (dietType === 'keto' && (product.carbs || 0) > 5) {
             issues.push({
                 type: 'macros',
                 severity: 'warning',
-                message: `High carbs (${product.carbs}g) for keto`,
+                message: `High carbs (${product.carbs || 0}g) for keto`,
             });
             if (severity !== 'blocked') severity = 'warning';
         }
     }
 
     // Check disliked foods (soft warning)
+    const productName = (product.name || '').toLowerCase();
+    const productBrand = (product.brand || '').toLowerCase();
     const disliked = dislikedFoods.filter(food =>
-        product.name.toLowerCase().includes(food.toLowerCase()) ||
-        product.brand.toLowerCase().includes(food.toLowerCase())
+        productName.includes(food.toLowerCase()) ||
+        productBrand.includes(food.toLowerCase())
     );
     if (disliked.length > 0) {
         issues.push({
@@ -68,7 +75,7 @@ export function checkProductSafety(product, userConstraints = {}) {
     }
 
     // Check restricted tags
-    const conflictingTags = product.tags.filter(t => restrictedTags.includes(t));
+    const conflictingTags = tagsList.filter(t => restrictedTags.includes(t));
     if (conflictingTags.length > 0) {
         issues.push({
             type: 'restriction',
@@ -119,12 +126,20 @@ function getSafetyRecommendation(severity, issues) {
  * Returns protein, carb, fat ratios
  */
 export function calculateMacroRatio(product) {
-    const totalCals = (product.protein * 4) + (product.carbs * 4) + (product.fat * 9);
+    if (!product) return { proteinPercent: 0, carbPercent: 0, fatPercent: 0 };
+    const protein = product.protein || 0;
+    const carbs = product.carbs || 0;
+    const fat = product.fat || 0;
+    const totalCals = (protein * 4) + (carbs * 4) + (fat * 9);
+
+    if (totalCals === 0) {
+        return { proteinPercent: 0, carbPercent: 0, fatPercent: 0 };
+    }
 
     return {
-        proteinPercent: Math.round((product.protein * 4 / totalCals) * 100),
-        carbPercent: Math.round((product.carbs * 4 / totalCals) * 100),
-        fatPercent: Math.round((product.fat * 9 / totalCals) * 100),
+        proteinPercent: Math.round((protein * 4 / totalCals) * 100),
+        carbPercent: Math.round((carbs * 4 / totalCals) * 100),
+        fatPercent: Math.round((fat * 9 / totalCals) * 100),
     };
 }
 
