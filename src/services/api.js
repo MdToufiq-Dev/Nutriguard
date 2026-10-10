@@ -3,7 +3,7 @@
  * Currently unused - all services use localStorage via storage.js
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://nutriguard-backend-ilea.onrender.com/api';
 
 /**
  * Generic request wrapper
