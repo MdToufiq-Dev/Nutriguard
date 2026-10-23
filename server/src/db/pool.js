@@ -17,6 +17,7 @@ if (!databaseUrl) {
 const pool = new Pool({
   connectionString: databaseUrl,
   ssl: (config.databaseSsl && config.nodeEnv !== 'test') ? { rejectUnauthorized: false } : false,
+  family: 4, // Force IPv4 to resolve ENETUNREACH issues
 });
 
 pool.on('error', (err) => {
