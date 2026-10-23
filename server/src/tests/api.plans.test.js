@@ -3,9 +3,15 @@ import request from 'supertest';
 import app from '../app.js';
 import pool from '../db/pool.js';
 import config from '../config/env.js';
+import jwt from 'jsonwebtoken';
 
 describe('Plans & Constraints API', () => {
   const testUserId = config.devUserId;
+  const authHeader = () => `Bearer ${jwt.sign({ userId: testUserId, email: 'dev@example.com' }, config.jwtSecret)}`;
+
+  if (config.authMode !== 'jwt') {
+    throw new Error('Backend tests require AUTH_MODE=jwt');
+  }
 
   beforeEach(async () => {
     await pool.query('DELETE FROM plan_meals');
@@ -30,12 +36,15 @@ describe('Plans & Constraints API', () => {
 
     const postRes = await request(app)
       .post('/api/plans/constraints')
+      .set('Authorization', authHeader())
       .send(constraintData);
 
     expect(postRes.status).toBe(201);
     expect(postRes.body.goal).toBe('muscle-gain');
 
-    const getRes = await request(app).get('/api/plans/constraints');
+    const getRes = await request(app)
+      .get('/api/plans/constraints')
+      .set('Authorization', authHeader());
     expect(getRes.status).toBe(200);
     expect(getRes.body.goal).toBe('muscle-gain');
     expect(Number(getRes.body.daily_budget)).toBe(25.50);
@@ -49,32 +58,29 @@ describe('Plans & Constraints API', () => {
       duration: 14,
       daily_budget: 25.50,
       calorie_target: 2800,
-      start_date: '2026-10-01',
-      end_date: '2026-10-15',
+      start_date: '2026-10-20',
+      end_date: '2026-10-30',
     };
 
     const postRes = await request(app)
       .post('/api/plans')
+      .set('Authorization', authHeader())
       .send(planData);
 
     expect(postRes.status).toBe(201);
     expect(postRes.body.id).toBe('plan-api-1');
 
-    const getRes = await request(app).get('/api/plans/active');
+    const getRes = await request(app)
+      .get('/api/plans/active')
+      .set('Authorization', authHeader());
     expect(getRes.status).toBe(200);
     expect(getRes.body.id).toBe('plan-api-1');
   });
 
   it('GET /api/users/:userId/constraints and PUT /api/users/:userId/constraints', async () => {
-    const customUserId = 'custom-user-123';
-    await pool.query('DELETE FROM users WHERE id = $1 OR email = $2', [customUserId, 'custom@example.com']);
-    await pool.query(
-      'INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email',
-      [customUserId, 'custom@example.com']
-    );
-
     const updateRes = await request(app)
-      .put(`/api/users/${customUserId}/constraints`)
+      .put(`/api/users/${testUserId}/constraints`)
+      .set('Authorization', authHeader())
       .send({
         goal: 'keto',
         diet_type: 'keto',
@@ -86,7 +92,9 @@ describe('Plans & Constraints API', () => {
     expect(updateRes.status).toBe(200);
     expect(updateRes.body.goal).toBe('keto');
 
-    const getRes = await request(app).get(`/api/users/${customUserId}/constraints`);
+    const getRes = await request(app)
+      .get(`/api/users/${testUserId}/constraints`)
+      .set('Authorization', authHeader());
     expect(getRes.status).toBe(200);
     expect(getRes.body.goal).toBe('keto');
   });

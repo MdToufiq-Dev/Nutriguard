@@ -1,6 +1,8 @@
+import jwt from 'jsonwebtoken';
 import config from '../config/env.js';
 
 export const auth = (req, res, next) => {
+  // Dev mode bypass is retained only for legacy local API tests and demos.
   if (config.authMode === 'dev') {
     req.user = { id: config.devUserId };
     return next();
@@ -17,9 +19,18 @@ export const auth = (req, res, next) => {
     });
   }
 
-  // TODO: Implement JWT verification logic for 'jwt' mode
-  // const token = authHeader.split(' ')[1];
-  // jwt.verify(token, config.jwtSecret, (err, user) => { ... });
-
-  next();
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, config.jwtSecret);
+    req.user = { id: decoded.userId, email: decoded.email };
+    next();
+  } catch (err) {
+    return res.status(401).json({
+      error: {
+        message: 'Invalid or expired token',
+        code: 'UNAUTHORIZED',
+        status: 401
+      }
+    });
+  }
 };

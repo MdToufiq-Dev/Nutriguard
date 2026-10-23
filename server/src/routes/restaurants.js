@@ -10,7 +10,6 @@ const router = express.Router();
 router.get('/nearby', async (req, res) => {
   try {
     const filters = req.query;
-    // If address is provided, geocode it first
     if (filters.address) {
       const location = await geocodeAddress(filters.address);
       if (location) {
@@ -38,8 +37,7 @@ router.get('/:id', async (req, res) => {
 
 // Place Delivery Order
 router.post('/orders', async (req, res) => {
-  // TODO: Auth middleware
-  const userId = 'temp-user-id';
+  const userId = req.user.id;
   const { restaurantId, meals, totalPrice } = req.body;
   try {
     const order = await placeDeliveryOrder(userId, restaurantId, meals, totalPrice);
@@ -52,8 +50,7 @@ router.post('/orders', async (req, res) => {
 
 // Get Active Orders
 router.get('/orders/active', async (req, res) => {
-  // TODO: Auth middleware
-  const userId = 'temp-user-id';
+  const userId = req.user.id;
   try {
     const orders = await getActiveDeliveryOrders(userId);
     res.json(orders);
@@ -75,7 +72,7 @@ router.patch('/orders/:orderId', async (req, res) => {
 
 // Favorites
 router.get('/favorites', async (req, res) => {
-  const userId = 'temp-user-id';
+  const userId = req.user.id;
   try {
     const favorites = await getFavoriteRestaurants(userId);
     res.json(favorites);
@@ -85,7 +82,7 @@ router.get('/favorites', async (req, res) => {
 });
 
 router.post('/favorites', async (req, res) => {
-  const userId = 'temp-user-id';
+  const userId = req.user.id;
   try {
     await saveFavoriteRestaurant(userId, req.body.restaurantId);
     await FavoriteModel.add(userId, req.body.restaurantId);
@@ -96,7 +93,7 @@ router.post('/favorites', async (req, res) => {
 });
 
 router.delete('/favorites/:restaurantId', async (req, res) => {
-  const userId = 'temp-user-id';
+  const userId = req.user.id;
   try {
     await removeFavoriteRestaurant(userId, req.params.restaurantId);
     await FavoriteModel.remove(userId, req.params.restaurantId);

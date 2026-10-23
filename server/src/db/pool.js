@@ -16,7 +16,7 @@ if (!databaseUrl) {
 
 const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: config.databaseSsl ? { rejectUnauthorized: false } : false,
+  ssl: (config.databaseSsl && config.nodeEnv !== 'test') ? { rejectUnauthorized: false } : false,
 });
 
 pool.on('error', (err) => {

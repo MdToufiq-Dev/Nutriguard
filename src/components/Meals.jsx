@@ -4,6 +4,8 @@ import { useToast } from '../contexts/ToastContext';
 import { useCurrentUser } from '../integration/useCurrentUser';
 import * as planService from '../services/planService';
 import { calculatePlanStats } from '../utils/planGenerator';
+import { getMealsByType } from '../data/mealLibrary';
+import { usePlan } from '../contexts/PlanContext';
 
 const MEAL_ICONS = {
     breakfast: <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="8"/><line x1="10" y1="2" x2="10" y2="8"/><line x1="14" y1="2" x2="14" y2="8"/></svg>,
@@ -22,55 +24,79 @@ export default function Meals() {
 
     const [plan, setPlan] = useState(null);
     const [todayMeals, setTodayMeals] = useState([]);
+    const [todayDayNumber, setTodayDayNumber] = useState(null);
     const [stats, setStats] = useState(null);
 
-    // Load active plan
+    // Use PlanContext instead of local useEffect for plan loading
+    const { plan: contextPlan, loadPlan, swapMeal, clearPlan } = usePlan();
     useEffect(() => {
-        const loadPlan = async () => {
-            const activePlan = await planService.getActivePlan(user.id);
-            if (activePlan) {
-                setPlan(activePlan);
-                const today = new Date().toISOString().split('T')[0];
-                const todayDay = activePlan.days.find(d => d.date === today);
-                if (todayDay) {
-                    setTodayMeals(todayDay.meals);
-                }
-                setStats(calculatePlanStats(activePlan));
-            }
-        };
-        loadPlan();
-    }, [user.id]);
-
-    const handleMealSwap = (mealId, dayNumber) => {
-        triggerLoader(async () => {
-            const updated = await planService.swapMealInPlan(user.id, dayNumber, mealId, mealId);
-            setPlan(updated);
-
+        if (contextPlan) {
+            setPlan(contextPlan);
             const today = new Date().toISOString().split('T')[0];
-            const todayDay = updated.days.find(d => d.date === today);
+            const todayDay = contextPlan.days.find(d => d.date === today);
             if (todayDay) {
                 setTodayMeals(todayDay.meals);
+                setTodayDayNumber(todayDay.dayNumber);
+            } else {
+                setTodayMeals([]);
+                setTodayDayNumber(null);
+            }
+            setStats(calculatePlanStats(contextPlan));
+        } else {
+            setPlan(null);
+            setTodayMeals([]);
+            setTodayDayNumber(null);
+            setStats(null);
+        }
+    }, [contextPlan]);
+
+    const handleMealSwap = (mealId) => {
+        triggerLoader(async () => {
+            const currentMeal = todayMeals.find(m => m.id === mealId);
+            if (!currentMeal || todayDayNumber === null) return;
+
+            const alternatives = getMealsByType(currentMeal.mealType).filter(m => m.id !== mealId);
+            if (alternatives.length === 0) {
+                showToast('No alternative meals available', 'error');
+                return;
             }
 
-            showToast('Meal swapped successfully!', 'success');
+            const newMeal = alternatives[Math.floor(Math.random() * alternatives.length)];
+
+            // Use context swapMeal which updates contextPlan
+            const updated = await swapMeal(todayDayNumber, mealId, newMeal);
+
+            showToast(`Swapped to ${newMeal.name}!`, 'success');
         }, 300);
     };
 
-    if (!plan) {
+    const handleClearPlan = () => {
+        if (window.confirm('Are you sure you want to clear your meal plan?')) {
+            triggerLoader(async () => {
+                await clearPlan();
+                showToast('Meal plan cleared!', 'success');
+            }, 300);
+        }
+    };
+
+    const costPerDay = stats ? (stats.totalCost / 7).toFixed(2) : '0';
+    const hasMeals = todayMeals && todayMeals.length > 0;
+
+    if (!plan || !hasMeals) {
         return (
             <>
                 <div className="view-header">
                     <h2 className="view-title">Dietary Plan</h2>
-                    <p className="view-subtitle">No active plan yet</p>
+                    <p className="view-subtitle">{!plan ? 'No active plan yet' : 'No meals planned for today'}</p>
                 </div>
-                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
-                    <p>Create a plan in the AI Nutritionist to get started</p>
-                </div>
+                {!plan && (
+                    <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+                        <p>Create a plan in the AI Nutritionist to get started</p>
+                    </div>
+                )}
             </>
         );
     }
-
-    const costPerDay = stats ? (stats.totalCost / 7).toFixed(2) : '0';
 
     return (
         <>
@@ -79,6 +105,15 @@ export default function Meals() {
                 <p className="view-subtitle">
                     {plan.dietType.charAt(0).toUpperCase() + plan.dietType.slice(1)} • {plan.calorieTarget} kcal • ${costPerDay}/day
                 </p>
+                {hasMeals && (
+                    <button
+                        className="btn-clear"
+                        onClick={handleClearPlan}
+                        style={{ marginTop: '10px', background: 'var(--error)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', display: 'inline-block' }}
+                    >
+                        Clear Meal Plan
+                    </button>
+                )}
             </div>
 
             <div className="meal-grid">

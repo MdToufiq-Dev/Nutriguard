@@ -3,17 +3,25 @@ import request from 'supertest';
 import app from '../app.js';
 import pool from '../db/pool.js';
 import config from '../config/env.js';
+import jwt from 'jsonwebtoken';
 import { ComplianceModel } from '../db/models/compliance.js';
 
 describe('Calendar & Compliance API', () => {
   const userId = config.devUserId;
+  const authHeader = () => `Bearer ${jwt.sign({ userId, email: 'dev@example.com' }, config.jwtSecret)}`;
+
+  if (config.authMode !== 'jwt') {
+    throw new Error('Backend tests require AUTH_MODE=jwt');
+  }
 
   beforeEach(async () => {
-    await pool.query('DELETE FROM compliance WHERE user_id = $1', [userId]);
     await pool.query('DELETE FROM plan_meals');
-    await pool.query('DELETE FROM plans WHERE user_id = $1', [userId]);
-    await pool.query('DELETE FROM user_constraints WHERE user_id = $1', [userId]);
-    await pool.query('DELETE FROM users WHERE id = $1 OR email = $2', [userId, 'dev@example.com']);
+    await pool.query('DELETE FROM plans');
+    await pool.query('DELETE FROM compliance');
+    await pool.query('DELETE FROM scan_history');
+    await pool.query('DELETE FROM user_constraints');
+    await pool.query('DELETE FROM users WHERE email = $1', ['dev@example.com']);
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
     await pool.query(
       'INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email',
       [userId, 'dev@example.com']
@@ -23,6 +31,7 @@ describe('Calendar & Compliance API', () => {
   it('should set and get compliance for a specific date', async () => {
     const postRes = await request(app)
       .post('/api/calendar/compliance')
+      .set('Authorization', authHeader())
       .send({
         date: '2026-10-04',
         status: 'followed'
@@ -32,7 +41,9 @@ describe('Calendar & Compliance API', () => {
     expect(postRes.body.status).toBe('followed');
     expect(postRes.body.date).toBe('2026-10-04');
 
-    const getRes = await request(app).get('/api/calendar/compliance/2026-10-04');
+    const getRes = await request(app)
+      .get('/api/calendar/compliance/2026-10-04')
+      .set('Authorization', authHeader());
     expect(getRes.status).toBe(200);
     expect(getRes.body.status).toBe('followed');
   });
@@ -40,16 +51,20 @@ describe('Calendar & Compliance API', () => {
   it('should update existing compliance if called again on same date', async () => {
     await request(app)
       .post('/api/calendar/compliance')
+      .set('Authorization', authHeader())
       .send({ date: '2026-10-04', status: 'partial' });
 
     const updateRes = await request(app)
       .post('/api/calendar/compliance')
+      .set('Authorization', authHeader())
       .send({ date: '2026-10-04', status: 'followed' });
 
     expect(updateRes.status).toBe(201);
     expect(updateRes.body.status).toBe('followed');
 
-    const logRes = await request(app).get('/api/calendar/compliance');
+    const logRes = await request(app)
+      .get('/api/calendar/compliance')
+      .set('Authorization', authHeader());
     expect(logRes.body.logs.length).toBe(1);
     expect(logRes.body.logs[0].status).toBe('followed');
   });
@@ -57,12 +72,17 @@ describe('Calendar & Compliance API', () => {
   it('should delete a compliance entry', async () => {
     await request(app)
       .post('/api/calendar/compliance')
+      .set('Authorization', authHeader())
       .send({ date: '2026-10-03', status: 'followed' });
 
-    const deleteRes = await request(app).delete('/api/calendar/compliance/2026-10-03');
+    const deleteRes = await request(app)
+      .delete('/api/calendar/compliance/2026-10-03')
+      .set('Authorization', authHeader());
     expect(deleteRes.status).toBe(200);
 
-    const getRes = await request(app).get('/api/calendar/compliance/2026-10-03');
+    const getRes = await request(app)
+      .get('/api/calendar/compliance/2026-10-03')
+      .set('Authorization', authHeader());
     expect(getRes.status).toBe(404);
   });
 

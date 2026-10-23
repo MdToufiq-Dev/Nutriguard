@@ -3,6 +3,7 @@ import { useLoader } from '../../contexts/LoaderContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useCurrentUser } from '../../integration/useCurrentUser';
 import { getHealthProfile } from '../../integration/getHealthProfile';
+import { usePlan } from '../../contexts/PlanContext';
 import * as planService from '../../services/planService';
 import { generatePlan, calculatePlanStats } from '../../utils/planGenerator';
 
@@ -117,7 +118,7 @@ export default function ChatView() {
             }
         };
         loadProfile();
-    }, [user.id]);
+    }, []);
 
     const step = CHAT_STEPS[currentStep];
 
@@ -125,6 +126,7 @@ export default function ChatView() {
         await triggerLoader(async () => {
             try {
                 const plan = generatePlan({
+                    userId: user?.id,
                     dietType: finalResponses.welcome || 'high-protein',
                     calorieTarget: parseInt(finalResponses.calories, 10) || 2000,
                     allergens: [
@@ -135,7 +137,6 @@ export default function ChatView() {
                         .split(',')
                         .map(f => f.trim())
                         .filter(Boolean),
-                    userId: user.id,
                 });
 
                 let savedPlan = plan;
@@ -176,13 +177,14 @@ export default function ChatView() {
         }
     };
 
+    const { activatePlan } = usePlan();
     const handleActivatePlan = async () => {
         if (!generatedPlan) return;
 
         await triggerLoader(async () => {
             try {
                 const today = new Date().toISOString().split('T')[0];
-                await planService.activateUserPlan(user.id, generatedPlan.id, today);
+                await activatePlan(generatedPlan.id, today);
                 showToast('Diet plan activated! Check your Dashboard and Calendar.', 'success');
 
                 setTimeout(() => {

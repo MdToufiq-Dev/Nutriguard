@@ -9,7 +9,7 @@ const router = express.Router();
 // Lookup Barcode & evaluate safety
 router.get('/lookup/:barcode', async (req, res, next) => {
   const { barcode } = req.params;
-  const userId = req.user?.id || 'temp-user-id';
+  const userId = req.user.id;
 
   try {
     const product = await getProduct(barcode);
@@ -36,7 +36,7 @@ router.get('/lookup/:barcode', async (req, res, next) => {
 
 // Save Scan History
 router.post('/history', async (req, res, next) => {
-  const userId = req.body.userId || req.user?.id || 'temp-user-id';
+  const userId = req.user.id;
   const { barcode, productName, verdict = 'safe' } = req.body;
 
   if (!barcode) {
@@ -59,8 +59,8 @@ router.post('/history', async (req, res, next) => {
 
 // Get Scan History
 router.get('/history', async (req, res, next) => {
-  const userId = req.query.userId || req.user?.id || 'temp-user-id';
-  const limit = parseInt(req.query.limit, 10) || 50;
+  const userId = req.user.id;
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100);
 
   try {
     const history = await ProductModel.getScanHistory(userId, limit);

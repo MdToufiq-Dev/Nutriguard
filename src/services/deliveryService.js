@@ -4,79 +4,46 @@
 
 import * as api from './api.js';
 
-/**
- * Search restaurants with constraints
- */
 export async function searchRestaurants(filters = {}) {
-    return await api.get(`/delivery/restaurants`, filters);
+    return await api.get('/restaurants/nearby', filters);
 }
 
-/**
- * Get restaurant details
- */
 export async function getRestaurantDetails(restaurantId) {
-    return await api.get(`/delivery/restaurants/${restaurantId}`);
+    return await api.get(`/restaurants/${restaurantId}`);
 }
 
-/**
- * Get delivery orders for user
- */
-export async function getDeliveryOrders(userId) {
-    return await api.get(`/delivery/orders`, { userId });
+export async function getDeliveryOrders() {
+    return await api.get('/restaurants/orders');
 }
 
-/**
- * Place delivery order
- */
-export async function placeDeliveryOrder(userId, restaurantId, meals, totalPrice) {
-    return await api.post(`/delivery/orders`, { userId, restaurantId, meals, totalPrice });
+export async function placeDeliveryOrder(restaurantId, meals, totalPrice) {
+    return await api.post('/restaurants/orders', { restaurantId, meals, totalPrice });
 }
 
-/**
- * Get active delivery orders (not yet delivered/cancelled)
- */
-export async function getActiveDeliveryOrders(userId) {
-    return await api.get(`/delivery/orders/active`, { userId });
+export async function getActiveDeliveryOrders() {
+    return await api.get('/restaurants/orders/active');
 }
 
-/**
- * Update order status
- */
 export async function updateOrderStatus(orderId, newStatus) {
-    return await api.put(`/delivery/orders/${orderId}`, { status: newStatus });
+    return await api.patch(`/restaurants/orders/${orderId}`, { status: newStatus });
 }
 
-/**
- * Cancel order
- */
 export async function cancelOrder(orderId) {
-    return await api.put(`/delivery/orders/${orderId}`, { status: 'cancelled' });
+    return updateOrderStatus(orderId, 'cancelled');
 }
 
-/**
- * Get order details
- */
 export async function getOrderDetails(orderId) {
-    return await api.get(`/delivery/orders/${orderId}`);
+    return await api.get(`/restaurants/orders/${orderId}`);
 }
 
-/**
- * Save favorite restaurant
- */
-export async function saveFavoriteRestaurant(userId, restaurantId) {
-    return await api.post(`/delivery/favorites`, { restaurantId });
+export async function saveFavoriteRestaurant(restaurantId) {
+    return await api.post('/restaurants/favorites', { restaurantId });
 }
 
-/**
- * Get favorite restaurants
- */
-export async function getFavoriteRestaurants(userId) {
-    return await api.get(`/delivery/favorites`, { userId });
+export async function getFavoriteRestaurants() {
+    return await api.get('/restaurants/favorites');
 }
 
-/**
- * Remove favorite restaurant
- */
-export async function removeFavoriteRestaurant(userId, restaurantId) {
-    return await api.del(`/delivery/favorites/${restaurantId}`);
+export async function removeFavoriteRestaurant(restaurantId) {
+    return await api.del(`/restaurants/favorites/${restaurantId}`);
 }

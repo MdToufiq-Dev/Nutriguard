@@ -35,7 +35,7 @@ export default function Calendar() {
         let isMounted = true;
         const loadData = async () => {
             try {
-                const data = await calendarService.getComplianceLog(user.id);
+                const data = await calendarService.getComplianceLog();
                 if (!isMounted) return;
 
                 const log = data && data.logs ? data.logs : (Array.isArray(data) ? data : []);
@@ -50,7 +50,7 @@ export default function Calendar() {
         return () => {
             isMounted = false;
         };
-    }, [user.id]);
+    }, []);
 
     const handleDayClick = (date) => {
         if (isFuture(date)) {
@@ -65,8 +65,8 @@ export default function Calendar() {
 
         await triggerLoader(async () => {
             try {
-                await calendarService.setCompliance(user.id, date, status);
-                const data = await calendarService.getComplianceLog(user.id);
+                await calendarService.setCompliance(date, status);
+                const data = await calendarService.getComplianceLog();
                 const log = data && data.logs ? data.logs : (Array.isArray(data) ? data : []);
                 setComplianceLog(log);
                 const newStreak = typeof data?.streak === 'number' ? data.streak : calculateStreak(log);

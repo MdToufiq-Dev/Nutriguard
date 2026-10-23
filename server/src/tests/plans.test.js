@@ -4,6 +4,11 @@ import { PlanModel } from '../db/models/plan.js';
 import { MealModel } from '../db/models/meal.js';
 import { PlanMealModel } from '../db/models/planMeal.js';
 import pool from '../db/pool.js';
+import config from '../config/env.js';
+
+if (config.authMode !== 'jwt') {
+  throw new Error('Backend tests require AUTH_MODE=jwt');
+}
 
 describe('Plans and Constraints', () => {
   beforeEach(async () => {

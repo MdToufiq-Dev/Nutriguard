@@ -40,8 +40,8 @@ export default function ScannerView() {
         let isMounted = true;
         const loadData = async () => {
             try {
-                const profile = await getHealthProfile(user.id);
-                const plan = await planService.getActivePlan(user.id);
+                const profile = await getHealthProfile();
+                const plan = await planService.getActivePlan();
 
                 if (isMounted) {
                     const constraints = {
@@ -53,7 +53,7 @@ export default function ScannerView() {
                     userConstraintsRef.current = constraints;
                 }
 
-                const history = await scannerService.getScanHistory(user.id);
+                const history = await scannerService.getScanHistory();
                 if (isMounted) {
                     const list = Array.isArray(history) ? history : (history?.scans || []);
                     setScanHistory(list.slice(0, 10)); // Last 10 scans
@@ -66,7 +66,7 @@ export default function ScannerView() {
         return () => {
             isMounted = false;
         };
-    }, [user.id]);
+    }, []);
 
     const handleBarcodeScanned = useCallback(async (barcode) => {
         if (!barcode) return false;
@@ -194,9 +194,9 @@ export default function ScannerView() {
         await triggerLoader(async () => {
             try {
                 const safetyStatus = safetyCheck?.blocked ? 'blocked' : safetyCheck?.warning ? 'warning' : 'safe';
-                await scannerService.recordScan(user.id, scannedProduct.barcode, safetyStatus);
+                await scannerService.recordScan(scannedProduct.barcode, safetyStatus);
 
-                const history = await scannerService.getScanHistory(user.id);
+                const history = await scannerService.getScanHistory();
                 const list = Array.isArray(history) ? history : (history?.scans || []);
                 setScanHistory(list.slice(0, 10));
 

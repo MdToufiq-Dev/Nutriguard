@@ -7,27 +7,27 @@ import * as api from './api.js';
 /**
  * Get compliance log for a user
  */
-export async function getComplianceLog(userId) {
-    return await api.get(`/calendar/compliance`, { userId });
+export async function getComplianceLog() {
+    return await api.get(`/calendar/compliance`);
 }
 
 /**
  * Get compliance status for a specific date
  */
-export async function getComplianceForDate(userId, date) {
-    return await api.get(`/calendar/compliance/${date}`, { userId });
+export async function getComplianceForDate(date) {
+    return await api.get(`/calendar/compliance/${date}`);
 }
 
 /**
  * Set compliance status for a date
  */
-export async function setCompliance(userId, date, status) {
-    return await api.post(`/calendar/compliance`, { userId, date, status });
+export async function setCompliance(date, status) {
+    return await api.post(`/calendar/compliance`, { date, status });
 }
 
 /**
  * Delete compliance entry
  */
-export async function deleteCompliance(userId, date) {
+export async function deleteCompliance(date) {
     return await api.del(`/calendar/compliance/${date}`);
 }

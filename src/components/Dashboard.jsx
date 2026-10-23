@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLoader } from '../contexts/LoaderContext';
 import { useCurrentUser } from '../integration/useCurrentUser';
 import { getHealthSyncSummary } from '../integration/getHealthSyncSummary';
-import * as planService from '../services/planService';
+import { usePlan } from '../contexts/PlanContext';
 import * as calendarService from '../services/calendarService';
 import { calculateStreak } from '../utils/streak';
 
@@ -13,46 +13,30 @@ const MEAL_ICONS = {
 };
 
 export default function Dashboard() {
-    const { triggerLoader } = useLoader();
+    const { plan } = usePlan();
     const user = useCurrentUser();
-
-    const [plan, setPlan] = useState(null);
-    const [todayMeals, setTodayMeals] = useState([]);
     const [healthSync, setHealthSync] = useState(null);
     const [streak, setStreak] = useState(0);
-    const [todayCalories, setTodayCalories] = useState(0);
+
+    const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+    const todayDay = useMemo(() => plan?.days?.find(d => d.date === today), [plan, today]);
+
+    const todayMeals = todayDay?.meals || [];
+    const todayCalories = todayDay?.totalKcal || 0;
 
     useEffect(() => {
         const loadData = async () => {
-            // Load active plan
-            const activePlan = await planService.getActivePlan(user.id);
-            if (activePlan) {
-                setPlan(activePlan);
-                const today = new Date().toISOString().split('T')[0];
-                const todayDay = activePlan.days.find(d => d.date === today);
-                if (todayDay) {
-                    setTodayMeals(todayDay.meals);
-                    setTodayCalories(todayDay.totalKcal);
-                }
-            }
-
             // Load health sync data
             const sync = await getHealthSyncSummary(user.id);
             setHealthSync(sync);
 
             // Load streak
-            const log = await calendarService.getComplianceLog(user.id);
+            const log = await calendarService.getComplianceLog();
             setStreak(calculateStreak(log));
         };
 
         loadData();
     }, [user.id]);
-
-    const handleMealSwap = (mealId) => {
-        triggerLoader(() => {
-            // Placeholder - meal swap logic
-        }, 1000);
-    };
 
     const displayedMeals = todayMeals.length > 0 ? todayMeals : [];
     const displayCalories = todayCalories || (plan?.calorieTarget || 1847);
@@ -121,7 +105,6 @@ export default function Dashboard() {
                                     <span className="meta-pill">${meal.cost.toFixed(2)}</span>
                                 </div>
                                 <p className="meal-desc">{meal.description}</p>
-                                <button className="btn-swap" onClick={() => handleMealSwap(meal.id)}>Swap Meal</button>
                             </div>
                         </div>
                     ))}

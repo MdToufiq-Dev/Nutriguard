@@ -5,12 +5,15 @@ const LoaderContext = createContext();
 export function LoaderProvider({ children }) {
     const [isActive, setIsActive] = useState(false);
 
-    const triggerLoader = (callback, duration = 1500) => {
+    const triggerLoader = async (callback, duration = 500) => {
         setIsActive(true);
-        setTimeout(() => {
-            setIsActive(false);
-            if (callback) callback();
-        }, duration);
+        try {
+            await callback();
+        } finally {
+            setTimeout(() => {
+                setIsActive(false);
+            }, duration);
+        }
     };
 
     return (

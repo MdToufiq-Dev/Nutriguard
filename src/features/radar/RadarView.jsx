@@ -24,8 +24,8 @@ export default function RadarView() {
     // Load user constraints and data
     useEffect(() => {
         const loadData = async () => {
-            const profile = await getHealthProfile(user.id);
-            const plan = await planService.getActivePlan(user.id);
+            const profile = await getHealthProfile();
+            const plan = await planService.getActivePlan();
 
             setUserConstraints({
                 dietType: plan?.dietType || 'any',
@@ -41,15 +41,15 @@ export default function RadarView() {
             setRestaurants(results);
 
             // Load active orders and favorites
-            const orders = await deliveryService.getActiveDeliveryOrders(user.id);
+            const orders = await deliveryService.getActiveDeliveryOrders();
             setActiveOrders(orders);
 
-            const favs = await deliveryService.getFavoriteRestaurants(user.id);
+            const favs = await deliveryService.getFavoriteRestaurants();
             setFavorites(favs);
         };
 
         loadData();
-    }, [user.id, filters]);
+    }, [filters]);
 
     const handleRestaurantSelect = (restaurant) => {
         setSelectedRestaurant(restaurant);
@@ -57,8 +57,8 @@ export default function RadarView() {
 
     const handleAddToFavorites = async (restaurant) => {
         await triggerLoader(async () => {
-            await deliveryService.saveFavoriteRestaurant(user.id, restaurant.id);
-            const favs = await deliveryService.getFavoriteRestaurants(user.id);
+            await deliveryService.saveFavoriteRestaurant(restaurant.id);
+            const favs = await deliveryService.getFavoriteRestaurants();
             setFavorites(favs);
             showToast(`${restaurant.name} added to favorites`, 'success');
         }, 300);
@@ -66,8 +66,8 @@ export default function RadarView() {
 
     const handleRemoveFromFavorites = async (restaurant) => {
         await triggerLoader(async () => {
-            await deliveryService.removeFavoriteRestaurant(user.id, restaurant.id);
-            const favs = await deliveryService.getFavoriteRestaurants(user.id);
+            await deliveryService.removeFavoriteRestaurant(restaurant.id);
+            const favs = await deliveryService.getFavoriteRestaurants();
             setFavorites(favs);
             showToast(`${restaurant.name} removed from favorites`, 'info');
         }, 300);

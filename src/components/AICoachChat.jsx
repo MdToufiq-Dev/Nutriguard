@@ -76,6 +76,7 @@ export default function AICoachChat({ meals = [], totalCalories = 0 }) {
         padding: '20px',
         display: 'flex',
         flexDirection: 'column',
+        height: 'auto',
         minHeight: '450px',
         maxWidth: '720px',
         margin: '0 auto'

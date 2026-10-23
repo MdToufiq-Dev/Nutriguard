@@ -17,6 +17,7 @@ import restaurantsRoutes from './routes/restaurants.js';
 import usersRoutes from './routes/users.js';
 import mapsRoutes from './routes/maps.js';
 import chatRoutes from './routes/chat.js';
+import authRoutes from './routes/auth.js';
 
 const app = express();
 
@@ -36,7 +37,11 @@ app.use(express.json({ limit: '100kb' }));
 // Rate limiting
 app.use(rateLimiter);
 
-// API routes with auth
+// Public authentication routes (registration, OTP verification, and login)
+app.use('/api/auth', authRoutes);
+
+// Protected API routes with auth. Keep this middleware after the public auth
+// mount so all other /api paths are rejected before route matching.
 app.use('/api', auth);
 
 // API endpoints

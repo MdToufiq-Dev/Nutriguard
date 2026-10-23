@@ -5,7 +5,7 @@ const router = express.Router();
 
 // Get Compliance Log & Streak
 router.get('/compliance', async (req, res, next) => {
-  const userId = req.query.userId || req.user?.id || 'temp-user-id';
+  const userId = req.user.id;
   try {
     const logs = await ComplianceModel.getLogByUserId(userId);
     const streak = ComplianceModel.calculateStreak(logs);
@@ -20,7 +20,7 @@ router.get('/compliance', async (req, res, next) => {
 
 // Get Current Streak
 router.get('/streak', async (req, res, next) => {
-  const userId = req.query.userId || req.user?.id || 'temp-user-id';
+  const userId = req.user.id;
   try {
     const logs = await ComplianceModel.getLogByUserId(userId);
     const streak = ComplianceModel.calculateStreak(logs);
@@ -32,7 +32,7 @@ router.get('/streak', async (req, res, next) => {
 
 // Get Compliance for Specific Date
 router.get('/compliance/:date', async (req, res, next) => {
-  const userId = req.query.userId || req.user?.id || 'temp-user-id';
+  const userId = req.user.id;
   const { date } = req.params;
   try {
     const entry = await ComplianceModel.getByDate(userId, date);
@@ -47,7 +47,7 @@ router.get('/compliance/:date', async (req, res, next) => {
 
 // Set Compliance for a Date
 router.post('/compliance', async (req, res, next) => {
-  const userId = req.body.userId || req.user?.id || 'temp-user-id';
+  const userId = req.user.id;
   const { date, status } = req.body;
 
   if (!date || !status) {
@@ -72,7 +72,7 @@ router.post('/compliance', async (req, res, next) => {
 
 // Delete Compliance for Date
 router.delete('/compliance/:date', async (req, res, next) => {
-  const userId = req.query.userId || req.user?.id || 'temp-user-id';
+  const userId = req.user.id;
   const { date } = req.params;
   try {
     const deleted = await ComplianceModel.deleteByDate(userId, date);

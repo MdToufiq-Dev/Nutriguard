@@ -1,14 +1,10 @@
-/**
- * Integration stub for authentication
- * TODO(coworker): replace with real implementation
- *
- * Returns the currently authenticated user
- */
+import { useAuth } from '../contexts/AuthContext';
 
+/**
+ * Returns the currently authenticated user for feature components.
+ * Protected routes guarantee that a user is available before rendering.
+ */
 export function useCurrentUser() {
-    // Mock user data for development
-    return {
-        id: 'demo-user',
-        name: 'Demo User',
-    };
+    const { user } = useAuth();
+    return user;
 }
