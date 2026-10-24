@@ -16,7 +16,8 @@ if (!databaseUrl) {
 
 const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: (config.databaseSsl && config.nodeEnv !== 'test') ? { rejectUnauthorized: false } : false,
+  // Try using true to rely on system CA, which is standard for Supabase
+  ssl: (config.databaseSsl && config.nodeEnv !== 'test') ? true : false,
   connectionTimeoutMillis: 10000,
   max: 10,
 });
