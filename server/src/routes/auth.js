@@ -59,21 +59,44 @@ const getTransporter = () => {
 };
 
 const sendOtp = async (email, otp) => {
-  if (!emailConfigured()) {
-    if (config.nodeEnv === 'production') {
-      throw new Error('Email delivery is not configured');
+  if (!process.env.RESEND_API_KEY || !process.env.FROM_EMAIL) {
+    if (!emailConfigured()) {
+      if (config.nodeEnv === 'production') {
+        throw new Error('Email delivery is not configured');
+      }
+      logger.warn('Email is not configured; returning OTP in the response for development');
+      return false;
     }
-    logger.warn('Email is not configured; returning OTP in the response for development');
-    return false;
+
+    await getTransporter().sendMail({
+      from: config.emailUser,
+      to: email,
+      subject: 'Your NutriGuard verification code',
+      text: `Your NutriGuard verification code is ${otp}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
+      html: `<p>Your NutriGuard verification code is <strong>${otp}</strong>.</p><p>This code expires in ${OTP_EXPIRY_MINUTES} minutes.</p>`,
+    });
+    return true;
   }
 
-  await getTransporter().sendMail({
-    from: config.emailUser,
-    to: email,
-    subject: 'Your NutriGuard verification code',
-    text: `Your NutriGuard verification code is ${otp}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
-    html: `<p>Your NutriGuard verification code is <strong>${otp}</strong>.</p><p>This code expires in ${OTP_EXPIRY_MINUTES} minutes.</p>`,
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+    },
+    body: JSON.stringify({
+      from: process.env.FROM_EMAIL,
+      to: email,
+      subject: 'Your NutriGuard verification code',
+      html: `<p>Your NutriGuard verification code is <strong>${otp}</strong>.</p><p>This code expires in ${OTP_EXPIRY_MINUTES} minutes.</p>`,
+    }),
   });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(`Resend API error: ${errorData.message}`);
+  }
+
   return true;
 };
 
