@@ -37,19 +37,23 @@ const emailConfigured = () => Boolean(config.emailUser && config.emailPass);
 let transporter;
 const getTransporter = () => {
   if (!transporter) {
-    logger.info('SMTP Config:', { host: config.smtpHost, port: config.smtpPort, user: config.emailUser });
-    const transportOptions = config.smtpHost
-      ? {
-          host: config.smtpHost,
-          port: config.smtpPort,
-          secure: config.smtpSecure,
-          auth: { user: config.emailUser, pass: config.emailPass },
-        }
-      : {
-          service: 'gmail',
-          auth: { user: config.emailUser, pass: config.emailPass },
-        };
-    transporter = nodemailer.createTransport(transportOptions);
+    logger.info('SMTP Config:', {
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      user: process.env.EMAIL_USER
+    });
+
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.resend.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.EMAIL_USER || 'resend',
+        pass: process.env.EMAIL_PASS
+      },
+      connectionTimeout: 10000,
+      socketTimeout: 10000,
+    });
   }
   return transporter;
 };
