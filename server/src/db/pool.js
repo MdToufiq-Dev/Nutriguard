@@ -16,11 +16,7 @@ if (!databaseUrl) {
 
 const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: (config.databaseSsl && config.nodeEnv !== 'test') ? {
-    rejectUnauthorized: false,
-    requestCert: true,
-    agent: false
-  } : false,
+  ssl: (config.databaseSsl && config.nodeEnv !== 'test') ? { rejectUnauthorized: false } : false,
   connectionTimeoutMillis: 10000,
   max: 10,
 });
