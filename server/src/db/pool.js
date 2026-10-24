@@ -17,12 +17,16 @@ if (!databaseUrl) {
 const pool = new Pool({
   connectionString: databaseUrl,
   ssl: (config.databaseSsl && config.nodeEnv !== 'test') ? { rejectUnauthorized: false } : false,
-  family: 4, // Force IPv4 to resolve ENETUNREACH issues
+  connectionTimeoutMillis: 10000,
+  max: 10,
+});
+
+pool.on('connect', () => {
+  logger.info('Connected to database');
 });
 
 pool.on('error', (err) => {
   logger.error('Unexpected error on idle client', err);
-  process.exit(-1);
 });
 
 export default pool;
