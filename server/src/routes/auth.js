@@ -37,6 +37,7 @@ const emailConfigured = () => Boolean(config.emailUser && config.emailPass);
 let transporter;
 const getTransporter = () => {
   if (!transporter) {
+    logger.info('SMTP Config:', { host: config.smtpHost, port: config.smtpPort, user: config.emailUser });
     const transportOptions = config.smtpHost
       ? {
           host: config.smtpHost,
